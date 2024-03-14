@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow,  ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -10,29 +10,33 @@ const connection = mysql.createConnection({
   host: 'localhost', // Cambia esto si tu servidor MySQL está en otro lugar
   user: 'root',
   password: 'root',
-  database: 'buzonusuarios'
+  database: 'buzonusuario'
 });
 
 // Conexión a la base de datos
-connection.connect((err) => {
-  if (err) {
-    console.error('Error al conectar a la base de datos:', err);
-    return;
-  }
-  console.log('Conexión exitosa a la base de datos MySQL');
-
-  // Ejemplo de consulta a la base de datos
-  connection.query('SELECT * FROM usuario', (error, results, fields) => {
-    if (error) {
-      console.error('Error al realizar la consulta:', error);
+function HandleGetUsers(){
+  connection.connect((err) => {
+    if (err) {
+      console.error('Error al conectar a la base de datos:', err);
       return;
     }
-    console.log('Resultados de la consulta:', results);
+    console.log('Conexión exitosa a la base de datos MySQL');
+  
+    // Ejemplo de consulta a la base de datos
+    connection.query('SELECT * FROM usuario', (error, results, fields) => {
+      if (error) {
+        console.error('Error al realizar la consulta:', error);
+        return;
+      }
+      console.log('Resultados de la consulta:', results);
+      
+    });
+    // Cerrar la conexión cuando hayas terminado
+    connection.end();
+    
   });
+}
 
-  // Cerrar la conexión cuando hayas terminado
-  connection.end();
-});
 
 function createWindow() {
   // Create the browser window.
@@ -64,6 +68,29 @@ function createWindow() {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+  ipcMain.on('getUsers',()=>{
+    connection.connect((err) => {
+      if (err) {
+        console.error('Error al conectar a la base de datos:', err);
+        return;
+      }
+      console.log('Conexión exitosa a la base de datos MySQL');
+    
+      // Ejemplo de consulta a la base de datos
+      connection.query('SELECT * FROM usuario', (error, results, fields) => {
+        if (error) {
+          console.error('Error al realizar la consulta:', error);
+          return;
+        }
+        console.log('Resultados de la consulta:', results);
+        mainWindow.webContents.send('results',results)
+      });
+      // Cerrar la conexión cuando hayas terminado
+      connection.end();
+      
+    });
+  })
+
 }
 
 // This method will be called when Electron has finished

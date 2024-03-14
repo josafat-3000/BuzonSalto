@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Routes, Route, Outlet, Link, useNavigate} from "react-router-dom";
 import virtu from "./assets/virtu.jfif"
 import settings from "./assets/icons8-settings.svg"
@@ -7,7 +8,7 @@ export function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Home />} />
-          <Route path="/seleccionar" />
+          <Route path="/seleccionar" element={<Colocar />}/>
           <Route path="/email" element={<Colocar />} />
           <Route path="/retirar" element={<Retirar />} />
         </Route>
@@ -44,6 +45,7 @@ function Home() {
   const navigate = useNavigate();
 
   const handleColocar = ()=>{
+    window.electron.ipcRenderer.send('getUsers',null);
     navigate('/seleccionar');
   }
   const handleRecoger = ()=>{
@@ -62,9 +64,19 @@ function Home() {
 }
 
 function Colocar() {
+  const [results, setResults] = useState([]);
+
+  useEffect(() => {
+    window.electron.ipcRenderer.on('results', (event, results) => {
+      setResults(results);
+    });
+  }, []);
   return (
-    <div className="body">
+    <div>
       <h2>Colocar Paquete</h2>
+      {results.map((elemento, index) => (
+        <button key={index}>{elemento.departamento}</button>
+      ))}
     </div>
   );
 }
