@@ -71,12 +71,18 @@ function Colocar() {
       setResults(results);
     });
   }, []);
+
+  const handleClick = (departamento) => {
+    window.electron.ipcRenderer.send('email',departamento);
+  };
+
   return (
     <div>
       <h2>Colocar Paquete</h2>
+      <div className="containerButton">
       {results.map((elemento, index) => (
-        <button key={index}>{elemento.departamento}</button>
-      ))}
+        <button key={index} className="departamento" onClick={() => handleClick(elemento)}>{elemento.departamento}</button>
+      ))}</div>
     </div>
   );
 }

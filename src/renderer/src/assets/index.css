@@ -217,6 +217,7 @@ body {
   padding: 0;
   height: '100vh';
   font-family: Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-attachment: fixed; 
 }
 /*navbar section*/
 .navbar {
@@ -299,3 +300,20 @@ body {
   cursor: pointer;
 }
 
+/* Seleccion */
+.containerButton{
+  display: flex;
+  justify-content: center; /* Esto alinea los elementos hijos en el centro horizontalmente */
+  align-items: center;
+}
+.departamento{
+  width: 25vw;
+  height: 12vh;
+  margin: 30px;
+  background-color: #015480 ;
+  border: none;
+  color: white;
+  font-size: 40px;
+  opacity: 85%;
+  cursor: pointer;
+}

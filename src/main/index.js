@@ -2,6 +2,26 @@ import { app, shell, BrowserWindow,  ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import nodemailer from "nodemailer"
+
+let password;
+
+let transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+  user: 'josafat30000@gmail.com',
+  pass: 'ljddpqtgcfrknygy'
+  }
+});
+
+function codigo() {
+  let codigo = '';
+  for (let i = 0; i < 6; i++) {
+    codigo += Math.floor(Math.random() * 10);
+  }
+  return codigo;
+}
+
 
 const mysql = require('mysql2');
 
@@ -10,32 +30,8 @@ const connection = mysql.createConnection({
   host: 'localhost', // Cambia esto si tu servidor MySQL está en otro lugar
   user: 'root',
   password: 'root',
-  database: 'buzonusuario'
+  database: 'buzonusuarios'
 });
-
-// Conexión a la base de datos
-function HandleGetUsers(){
-  connection.connect((err) => {
-    if (err) {
-      console.error('Error al conectar a la base de datos:', err);
-      return;
-    }
-    console.log('Conexión exitosa a la base de datos MySQL');
-  
-    // Ejemplo de consulta a la base de datos
-    connection.query('SELECT * FROM usuario', (error, results, fields) => {
-      if (error) {
-        console.error('Error al realizar la consulta:', error);
-        return;
-      }
-      console.log('Resultados de la consulta:', results);
-      
-    });
-    // Cerrar la conexión cuando hayas terminado
-    connection.end();
-    
-  });
-}
 
 
 function createWindow() {
@@ -90,6 +86,69 @@ function createWindow() {
       
     });
   })
+
+  ipcMain.on('email', (event, datos) => {
+    console.log('Datos recibidos en el proceso principal:', datos);
+    console.log(datos.correo)
+    let password = codigo();
+    let message = {
+      from: "josafat30000@gmail.com",
+      to: datos.correo,
+      subject: "Código de seguridad",
+      html: `<h1 style="color: #333; font-size: 16px;">Código de seguridad</h1>
+      <p style="color: #555; font-size: 14px;">Tu contraseña es: </p>
+      <p style="color: #007BFF; font-size: 18px;foo"><b>${password}</b></p>'`
+    };
+    transporter.sendMail(message, (error, info) => {
+      if (error) {
+          console.log("Error enviando email")
+          console.log(error.message)
+      } else {
+          console.log("Email enviado")
+      }
+    });
+  //   let locker = verificarEstado()
+  //   console.log(locker)
+  //   if(locker == 1){
+  //     password1 = password;
+  //     Lock_1.writeSync(0);
+  //     setTimeout(() => {
+  //       console.log('1')
+  //       Lock_1.writeSync(1);
+  //     }, 100);
+
+  //   }
+
+  //   else if(locker == 2){
+  //     password2 = password;
+  //     Lock_2.writeSync(0);
+  //     setTimeout(() => {
+  //       console.log('2')
+  //       Lock_2.writeSync(1);
+  //     }, 100);
+
+  //   }
+  //   else if (locker == 3){
+  //     password3 = password;
+  //     console.log('3')
+  //     Lock_3.writeSync(0);
+  //     setTimeout(() => {
+  //       Lock_3.writeSync(1);
+  //     }, 100);
+
+  //   }
+  //   else if(locker == 4){
+  //     console.log('4')
+  //     password4 = password;
+  //     Lock_4.writeSync(0);
+  //     setTimeout(() => {
+  //       Lock_4.writeSync(1);
+  //     }, 100);
+
+  //   }
+  //   console.log(EdoLockerDis_1,EdoLockerDis_2,EdoLockerDis_3,EdoLockerDis_4)
+ });
+
 
 }
 
