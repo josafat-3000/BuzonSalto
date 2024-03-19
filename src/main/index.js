@@ -9,8 +9,8 @@ let password;
 let transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-  user: 'josafat30000@gmail.com',
-  pass: 'ljddpqtgcfrknygy'
+  user: 'virtu.netmail@gmail.com',
+  pass: 'ohzvnwqlcqhftavw'
   }
 });
 
@@ -20,6 +20,30 @@ function codigo() {
     codigo += Math.floor(Math.random() * 10);
   }
   return codigo;
+}
+function verificarEstado(connection, id_user, password) {
+  connection.query("SELECT id FROM locker WHERE state = false", (error, results, fields) => {
+    if (error) {
+      console.error("Error al ejecutar la consulta:", error);
+      return;
+    }
+    if (results.length > 0) {
+      let lockersDisponibles = results.map((result) => result.id);
+      let numeroAleatorio = Math.floor(Math.random() * lockersDisponibles.length);
+      let idLockerSeleccionado = lockersDisponibles[numeroAleatorio];
+
+      // Actualizar el estado, la contraseña y el usuario asociado en una sola consulta
+      connection.query("UPDATE locker SET state = true, password = ?, id_user = ? WHERE id = ?", [password, id_user, idLockerSeleccionado], (error2, results2, fields2) => {
+        if (error2) {
+          console.error("Error al actualizar el estado del locker:", error2);
+          return;
+        }
+        console.log("Locker seleccionado:", idLockerSeleccionado);
+      });
+    } else {
+      console.log("No hay lockers disponibles.");
+    }
+  });
 }
 
 
@@ -32,7 +56,12 @@ const connection = mysql.createConnection({
   password: 'root',
   database: 'buzonusuarios'
 });
-
+connection.connect((err) => {
+  if (err) {
+    console.error('Error al conectar a la base de datos:', err);
+    return;
+  }
+  console.log('Conexión exitosa a la base de datos MySQL');});
 
 function createWindow() {
   // Create the browser window.
@@ -62,15 +91,9 @@ function createWindow() {
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html')) 
   }
-  ipcMain.on('getUsers',()=>{
-    connection.connect((err) => {
-      if (err) {
-        console.error('Error al conectar a la base de datos:', err);
-        return;
-      }
-      console.log('Conexión exitosa a la base de datos MySQL');
+  ipcMain.on('getUsers',(s)=>{
     
       // Ejemplo de consulta a la base de datos
       connection.query('SELECT * FROM usuario', (error, results, fields) => {
@@ -81,13 +104,11 @@ function createWindow() {
         console.log('Resultados de la consulta:', results);
         mainWindow.webContents.send('results',results)
       });
-      // Cerrar la conexión cuando hayas terminado
-      connection.end();
       
-    });
   })
 
   ipcMain.on('email', (event, datos) => {
+   
     console.log('Datos recibidos en el proceso principal:', datos);
     console.log(datos.correo)
     let password = codigo();
@@ -107,48 +128,41 @@ function createWindow() {
           console.log("Email enviado")
       }
     });
-  //   let locker = verificarEstado()
-  //   console.log(locker)
-  //   if(locker == 1){
-  //     password1 = password;
-  //     Lock_1.writeSync(0);
-  //     setTimeout(() => {
-  //       console.log('1')
-  //       Lock_1.writeSync(1);
-  //     }, 100);
-
-  //   }
-
-  //   else if(locker == 2){
-  //     password2 = password;
-  //     Lock_2.writeSync(0);
-  //     setTimeout(() => {
-  //       console.log('2')
-  //       Lock_2.writeSync(1);
-  //     }, 100);
-
-  //   }
-  //   else if (locker == 3){
-  //     password3 = password;
-  //     console.log('3')
-  //     Lock_3.writeSync(0);
-  //     setTimeout(() => {
-  //       Lock_3.writeSync(1);
-  //     }, 100);
-
-  //   }
-  //   else if(locker == 4){
-  //     console.log('4')
-  //     password4 = password;
-  //     Lock_4.writeSync(0);
-  //     setTimeout(() => {
-  //       Lock_4.writeSync(1);
-  //     }, 100);
-
-  //   }
-  //   console.log(EdoLockerDis_1,EdoLockerDis_2,EdoLockerDis_3,EdoLockerDis_4)
+    verificarEstado(connection,datos.id,password);
  });
+ ipcMain.on('password', (event, datos) => {
+  console.log(datos.code);
+  
+  // Consulta SQL para buscar el código en la base de datos
+  const sql = 'SELECT * FROM locker WHERE password = ?';
+  
+  // Ejecutar la consulta SQL
+  connection.query(sql, [datos.code], (error, results, fields) => {
+    if (error) {
+      console.error('Error al ejecutar la consulta:', error);
+      return;
+    }
 
+    // Si se encontró un locker con la contraseña especificada
+    if (results.length > 0) {
+      const locker = results[0];
+      
+      // Liberar el estado del locker, el ID del usuario y la contraseña a NULL
+      const updateSql = 'UPDATE locker SET state = ?, id_user = NULL, password = NULL WHERE id = ?';
+      connection.query(updateSql, [false, locker.id], (updateError, updateResults, updateFields) => {
+        if (updateError) {
+          console.error('Error al actualizar el locker:', updateError);
+          return;
+        }
+        mainWindow.webContents.send('success', null);
+        console.log('Locker liberado:', locker.id);
+      });
+    } else {
+      mainWindow.webContents.send('fail', null);
+      console.log('fail');
+    }
+  });
+});
 
 }
 
@@ -182,6 +196,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+  connection.end();
 })
 
 // In this file you can include the rest of your app"s specific main process
