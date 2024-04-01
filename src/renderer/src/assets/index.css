@@ -229,6 +229,12 @@ body {
   padding: 10px;
   height: 10vh;
   box-shadow:  0px 4px 8px rgba(0, 0, 0, 0.2); /* Sombra */
+  /* position: fixed; 
+  top: 0;
+  left: 0; 
+  right: 0; 
+  z-index: 1000; 
+  width: 100%; Asegura que ocupe toda la anchura */
 }
 
 .navbar-list {
@@ -271,6 +277,7 @@ body {
 
 /*home section*/
 .container{
+  height: 100%;
   width: 50%;
   align-items: left;
   font-family: "Maven Pro";
@@ -308,6 +315,7 @@ body {
 
 /* Seleccion */
 .containerButton{
+  margin: auto;
   display: flex;
   justify-content: center; /* Esto alinea los elementos hijos en el centro horizontalmente */
   align-items: center;
@@ -452,7 +460,6 @@ body {
 
 .colocarContainer{
   font-size: 25px;
-  
   padding: 3vw;
   display: flex;
   flex-direction: column;
@@ -467,4 +474,62 @@ body {
 }
 .code{
   margin-bottom: 10vh;
+}
+
+
+.security {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.input {
+  width: 500px;
+  height: 40px;
+  margin-bottom: 10px;
+  font-size: 28px;
+  text-align: center;
+}
+
+.submit-button {
+  width: 100px;
+  height: 40px;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+.virtual-keyboard {
+  display: inline-block;
+  margin-top: 20px;
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+}
+
+.key {
+  border-radius: 10px;
+  width: 6vw;
+  height: 6vw;
+  margin: 10px;
+  font-size: 24px;
+  border: 1px solid #000;
+  box-shadow:  0px 4px 8px rgba(0, 0, 0, 0.8); 
+  background-color: #04699d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-shadow: -1px -1px 0 #fff,  
+  1px -1px 0 #fff,
+ -1px  1px 0 #fff,
+  1px  1px 0 #fff;
+}
+
+
+.key.backspace {
+  background-color: #ff0000b7 ; 
+}
+.key.enviar {
+  background-color: rgba(0, 206, 0, 0.792); 
 }

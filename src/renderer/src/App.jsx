@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, Outlet, Link, useNavigate, useLocation} from "react-router-dom";
+
 import virtu from "./assets/virtu.jfif"
 import settings from "./assets/icons8-settings.svg"
 import cerrar from "./assets/cerrar.png"
 import back from "./assets/back.png"
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBackspace, faCircleArrowLeft, faCircleArrowRight } from "@fortawesome/free-solid-svg-icons";
 export function App() {
   return (
     <div>
@@ -136,11 +139,22 @@ function Popup({ handleClose, show, children }) {
     </div>
   );
 }
+
 const SecurityCodeForm = () => {
+  
   const navigate = useNavigate();
   const [code, setCode] = useState("");
   const [showPopup, setShowPopup] = useState(false);
-  const [popupContent, setPopupContent] = useState(""); // Track popup content
+  const [popupContent, setPopupContent] = useState("");
+
+  const handleKeyPress = (char) => {
+    setCode(prevValue => prevValue + char);
+  };
+
+  const handleBackspace = () => {
+    setCode(prevValue => prevValue.slice(0, -1));
+  };
+
 
   const handleCodeChange = (e) => {
     setCode(e.target.value);
@@ -153,31 +167,58 @@ const SecurityCodeForm = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     window.electron.ipcRenderer.send('password', { code });
+  };
+  window.electron.ipcRenderer.on('fail', (datos) => {
+    setPopupContent("Contraseña incorrecta");
+    togglePopup();
+    setTimeout(() => {
+      navigate('/')
+    }, 1000);
+  });
 
-    window.electron.ipcRenderer.on('fail', (datos) => {
-      setPopupContent("Contraseña incorrecta");
-      togglePopup(); // Show popup for incorrect password
-    });
-
-    window.electron.ipcRenderer.on('success', (datos) => {
-      setPopupContent("Por favor retira tu paquete");
-      togglePopup(); // Show popup for successful password
-    });
+  window.electron.ipcRenderer.on('success', (datos) => {
+    setPopupContent("Por favor retira tu paquete");
+    togglePopup(); // Show popup for successful password
     setTimeout(() => {
       navigate("/");
     }, 5000);
-  };
+  });
 
   return (
     <div className="security">
-      <h2 >Introduce tu código de seguridad</h2>
+      <h2>Introduce tu código de seguridad o escanea tu código QR</h2>
+
       <form onSubmit={handleSubmit}>
         <label>
-          <input className="input" type="text" value={code} onChange={handleCodeChange} />
+          <input autoFocus className="input" type="text" value={code} onChange={handleCodeChange} />
         </label>
         <br />
-        <button className="submit-button" type="submit">Enviar</button>
-      </form>
+        <div className="virtual-keyboard">
+          <div className="row">
+            <div className="key" onClick={() => handleKeyPress('1')}>1</div>
+            <div className="key" onClick={() => handleKeyPress('2')}>2</div>
+            <div className="key" onClick={() => handleKeyPress('3')}>3</div>
+            
+          </div>
+          <div className="row">
+            <div className="key" onClick={() => handleKeyPress('4')}>4</div>
+            <div className="key" onClick={() => handleKeyPress('5')}>5</div>
+            <div className="key" onClick={() => handleKeyPress('6')}>6</div>
+          </div>
+          <div className="row">
+            <div className="key" onClick={() => handleKeyPress('7')}>7</div>
+            <div className="key" onClick={() => handleKeyPress('8')}>8</div>
+            <div className="key" onClick={() => handleKeyPress('9')}>9</div>
+          </div>
+          <div className="row">
+          <div className="key backspace" onClick={() => handleBackspace()}><FontAwesomeIcon  icon={faBackspace}/></div>
+            <div className="key" onClick={() => handleKeyPress('0')}>0</div>
+            <button className="key enviar submit-button" type="submit"><FontAwesomeIcon icon={faCircleArrowRight}/></button>
+          </div>
+        </div>
+        </form>
+       
+      
 
       {showPopup && <Popup show={showPopup} handleClose={togglePopup}>
         <p>{popupContent}</p>
@@ -185,3 +226,5 @@ const SecurityCodeForm = () => {
     </div>
   );
 };
+
+

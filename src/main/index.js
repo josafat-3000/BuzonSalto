@@ -1,10 +1,9 @@
 import { app, shell, BrowserWindow,  ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import qr from 'qrcode';
 import icon from '../../resources/icon.png?asset'
 import nodemailer from "nodemailer"
-
-let password;
 
 let transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -66,13 +65,14 @@ connection.connect((err) => {
 function createWindow() {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    
     show: false,
+    fullscreen: true,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
+
       sandbox: false
     }
   })
@@ -112,13 +112,34 @@ function createWindow() {
     console.log('Datos recibidos en el proceso principal:', datos);
     console.log(datos.correo)
     let password = codigo();
+    const options = {
+      errorCorrectionLevel: 'H',
+      type: 'png',
+      quality: 1,
+      margin: 1,
+      color: {
+        dark: '#000',
+        light: '#fff'
+      }
+    };
+    
+    qr.toFile('codigo_qr.png', password, options, function (err) {
+      if (err) throw err;
+      console.log('Código QR generado correctamente.');
+    });
+    
     let message = {
       from: "josafat30000@gmail.com",
       to: datos.correo,
       subject: "Código de seguridad",
       html: `<h1 style="color: #333; font-size: 16px;">Código de seguridad</h1>
       <p style="color: #555; font-size: 14px;">Tu contraseña es: </p>
-      <p style="color: #007BFF; font-size: 18px;foo"><b>${password}</b></p>'`
+      <p style="color: #007BFF; font-size: 18px;foo"><b>${password}</b></p>`,
+      attachments: [{
+        filename: 'codigo_qr.png',
+        path: './codigo_qr.png', // Reemplaza esto con la ruta de tu imagen
+        cid: 'imagenAdjunta' // Id para hacer referencia a la imagen en el cuerpo del correo electrónico
+      }]
     };
     transporter.sendMail(message, (error, info) => {
       if (error) {
@@ -146,7 +167,9 @@ function createWindow() {
     // Si se encontró un locker con la contraseña especificada
     if (results.length > 0) {
       const locker = results[0];
-      
+      if(locker.state == true) {
+        
+      }
       // Liberar el estado del locker, el ID del usuario y la contraseña a NULL
       const updateSql = 'UPDATE locker SET state = ?, id_user = NULL, password = NULL WHERE id = ?';
       connection.query(updateSql, [false, locker.id], (updateError, updateResults, updateFields) => {
