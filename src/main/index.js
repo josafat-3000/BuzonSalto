@@ -187,8 +187,42 @@ function createWindow() {
   });
 });
 
-}
+ipcMain.on('login',(event,datos)=>{
+  console.log(datos)
+  const sql = 'SELECT * FROM administrador WHERE correo = ? AND password = ?';
+  
+  // Ejecutar la consulta SQL
+  connection.query(sql, [datos.username, datos.password], (error, results, fields) => {
+    if (error) {
+      console.error('Error al ejecutar la consulta:', error);
+      return;
+    }
+    // Si se encontró un locker con la contraseña especificada
+    if (results.length > 0) {
+      mainWindow.webContents.send('authSuccess', null);
+    } else {
+      mainWindow.webContents.send('authFail', null);
+    }
+  });
+});
+ipcMain.on('alta',(event,datos)=>{
+  console.log(datos)
+  const sql = 'INSERT INTO usuario(correo,departamento) values (?,?)';
+  
+  // Ejecutar la consulta SQL
+  connection.query(sql, [datos.username, datos.password], (error, results, fields) => {
+    if (error) {
+      console.error('Error al ejecutar la consulta:', error);
+      mainWindow.webContents.send('registerFail', null);
+      return;
+    }else{
+      console.log('success')
+      mainWindow.webContents.send('registerSuccess', null);
+    }
+  });
+});
 
+}
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
