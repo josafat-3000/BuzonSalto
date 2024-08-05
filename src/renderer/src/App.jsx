@@ -83,38 +83,81 @@ function Home() {
 
 function Colocar() {
   const [results, setResults] = useState([]);
+  const [showPopup, setShowPopup] = useState(false);
+  const [showPopup2, setShowPopup2] = useState(false);
+  const [popupContent, setPopupContent] = useState("");
+  const [error, setError] = useState(""); // Estado para manejar el mensaje de error
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Configura el listener para el evento 'results'
     window.electron.ipcRenderer.on('results', (event, results) => {
       setResults(results);
     });
+
+    // Configura el listener para el evento 'sinLockers'
+    window.electron.ipcRenderer.on('successLockers', () => {
+      setShowPopup(true);
+      setTimeout(() => {
+        navigate("/");
+      }, 5000);
+    });
+
+    // Configura el listener para el evento 'sinLockers'
+    window.electron.ipcRenderer.on('sinLockers', () => {
+      setError('No hay lockers disponibles');
+      setShowPopup2(true);
+      setTimeout(() => {
+        navigate("/");
+      }, 5000); // Mostrar popup de error si no hay lockers
+    });
+
+    // Cleanup al desmontar el componente
+    return () => {
+      window.electron.ipcRenderer.removeAllListeners('results');
+      window.electron.ipcRenderer.removeAllListeners('sinLockers');
+      window.electron.ipcRenderer.removeAllListeners('successLockers');
+    };
   }, []);
-  const [showPopup, setShowPopup] = useState(false);
 
   const togglePopup = () => {
     setShowPopup(!showPopup);
   };
 
+  const togglePopup2 = () => {
+    setShowPopup2(!showPopup2);
+  };
+
   const handleClick = (departamento) => {
-    window.electron.ipcRenderer.send('email',departamento);
-    togglePopup();
-    setTimeout(() => {
-      navigate("/")
-    }, 5000);
+    window.electron.ipcRenderer.send('email', departamento);
+    
   };
 
   return (
     <div className="colocarContainer">
-      <h2>Selecciona departamento</h2>
+      <h2>Selecciona tu id de coworker</h2>
       
       <div className="containerButton">
-      {results.map((elemento, index) => (
-        <button key={index} className="departamento" onClick={() => handleClick(elemento)}>{elemento.departamento}</button>
-      ))}</div>
-       <Popup show={showPopup} handleClose={togglePopup}>
-        <p>Por favor introduce tu paquete</p>
-      </Popup>
+        {results.map((elemento, index) => (
+          <button key={index} className="departamento" onClick={() => handleClick(elemento)}>
+            {elemento.departamento}
+          </button>
+        ))}
+      </div>
+      
+      
+      {showPopup && (
+        <Popup show={showPopup} handleClose={togglePopup}>
+          <p>Por favor introduce tu paquete</p>
+        </Popup>
+      )}
+
+      {/* Popup para mostrar el error de falta de lockers */}
+      {showPopup2 && (
+        <Popup show={showPopup2} handleClose={togglePopup2}>
+          <p>{error}</p>
+        </Popup>
+      )}
     </div>
   );
 }

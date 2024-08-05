@@ -4,7 +4,23 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import qr from 'qrcode';
 import icon from '../../resources/icon.png?asset'
 import nodemailer from "nodemailer"
+const { exec } = require('child_process');
 
+
+function runScript(locker) {
+  
+  exec(`python3 /usr/local/bin/gpio_setup2.py ${locker}`, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error ejecutando el script: ${error}`);
+      return;
+    }
+    if (stderr) {
+      //console.error(`stderr: ${stderr}`);
+    }
+    //console.log(`stdout: ${stdout}`);
+  });
+}
+// setRelaysToHigh();
 let transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -20,13 +36,14 @@ function codigo() {
   }
   return codigo;
 }
-function verificarEstado(connection, id_user, password) {
+function verificarEstado(connection, id_user, password, mainWindow, callback) {
   connection.query("SELECT id FROM locker WHERE state = false", (error, results, fields) => {
     if (error) {
       console.error("Error al ejecutar la consulta:", error);
       return;
     }
     if (results.length > 0) {
+
       let lockersDisponibles = results.map((result) => result.id);
       let numeroAleatorio = Math.floor(Math.random() * lockersDisponibles.length);
       let idLockerSeleccionado = lockersDisponibles[numeroAleatorio];
@@ -38,22 +55,28 @@ function verificarEstado(connection, id_user, password) {
           return;
         }
         console.log("Locker seleccionado:", idLockerSeleccionado);
+        // Llamar al callback para continuar con el envío del email y generación del QR
+        if (callback) callback(idLockerSeleccionado);
+        mainWindow.webContents.send('successLockers', null);
+
       });
     } else {
-      console.log("No hay lockers disponibles.");
+      // console.log("No hay lockers disponibles.");
+      mainWindow.webContents.send('sinLockers', null);
     }
   });
 }
+
 
 
 const mysql = require('mysql2');
 
 // Configuración de la conexión a la base de datos
 const connection = mysql.createConnection({
-  host: 'localhost', // Cambia esto si tu servidor MySQL está en otro lugar
+  host: '127.0.0.1', // Cambia esto si tu servidor MySQL está en otro lugar
   user: 'root',
   password: 'root',
-  database: 'buzonusuarios'
+  database: 'Buzon'
 });
 connection.connect((err) => {
   if (err) {
@@ -65,7 +88,7 @@ connection.connect((err) => {
 function createWindow() {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    
+
     show: false,
     fullscreen: true,
     autoHideMenuBar: true,
@@ -91,27 +114,27 @@ function createWindow() {
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html')) 
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
   ipcMain.on('getUsers',(s)=>{
-    
+
       // Ejemplo de consulta a la base de datos
       connection.query('SELECT * FROM usuario', (error, results, fields) => {
         if (error) {
           console.error('Error al realizar la consulta:', error);
           return;
         }
-        console.log('Resultados de la consulta:', results);
+        // console.log('Resultados de la consulta:', results);
         mainWindow.webContents.send('results',results)
       });
-      
+
   })
 
   ipcMain.on('email', (event, datos) => {
-   
     console.log('Datos recibidos en el proceso principal:', datos);
-    console.log(datos.correo)
+    console.log(datos.correo);
     let password = codigo();
+
     const options = {
       errorCorrectionLevel: 'H',
       type: 'png',
@@ -122,41 +145,49 @@ function createWindow() {
         light: '#fff'
       }
     };
-    
-    qr.toFile('codigo_qr.png', password, options, function (err) {
-      if (err) throw err;
-      console.log('Código QR generado correctamente.');
-    });
-    
-    let message = {
-      from: "josafat30000@gmail.com",
-      to: datos.correo,
-      subject: "Código de seguridad",
-      html: `<h1 style="color: #333; font-size: 16px;">Código de seguridad</h1>
-      <p style="color: #555; font-size: 14px;">Tu contraseña es: </p>
-      <p style="color: #007BFF; font-size: 18px;foo"><b>${password}</b></p>`,
-      attachments: [{
-        filename: 'codigo_qr.png',
-        path: './codigo_qr.png', // Reemplaza esto con la ruta de tu imagen
-        cid: 'imagenAdjunta' // Id para hacer referencia a la imagen en el cuerpo del correo electrónico
-      }]
-    };
-    transporter.sendMail(message, (error, info) => {
-      if (error) {
-          console.log("Error enviando email")
-          console.log(error.message)
-      } else {
-          console.log("Email enviado")
-      }
-    });
-    verificarEstado(connection,datos.id,password);
- });
+
+    // Función de callback para manejar el envío del correo electrónico y generación del QR
+    function handleSuccess(idLockerSeleccionado) {
+      runScript(idLockerSeleccionado);
+      qr.toFile('codigo_qr.png', password, options, function (err) {
+        if (err) throw err;
+        console.log('Código QR generado correctamente.');
+
+        let message = {
+          from: "josafat30000@gmail.com",
+          to: datos.correo,
+          subject: "Código de seguridad",
+          html: `<h1 style="color: #333; font-size: 16px;">Código de seguridad</h1>
+          <p style="color: #555; font-size: 14px;">Tu contraseña es: </p>
+          <p style="color: #007BFF; font-size: 18px;"><b>${password}</b></p>`,
+          attachments: [{
+            filename: 'codigo_qr.png',
+            path: './codigo_qr.png', // Reemplaza esto con la ruta de tu imagen
+            cid: 'imagenAdjunta' // Id para hacer referencia a la imagen en el cuerpo del correo electrónico
+          }]
+        };
+
+        transporter.sendMail(message, (error, info) => {
+          if (error) {
+            console.log("Error enviando email");
+            console.log(error.message);
+          } else {
+            console.log("Email enviado");
+          }
+        });
+      });
+    }
+
+    verificarEstado(connection, datos.id, password, mainWindow, handleSuccess);
+
+  });
+
  ipcMain.on('password', (event, datos) => {
-  console.log(datos.code);
-  
+  // console.log(datos.code);
+
   // Consulta SQL para buscar el código en la base de datos
   const sql = 'SELECT * FROM locker WHERE password = ?';
-  
+
   // Ejecutar la consulta SQL
   connection.query(sql, [datos.code], (error, results, fields) => {
     if (error) {
@@ -168,7 +199,7 @@ function createWindow() {
     if (results.length > 0) {
       const locker = results[0];
       if(locker.state == true) {
-        
+
       }
       // Liberar el estado del locker, el ID del usuario y la contraseña a NULL
       const updateSql = 'UPDATE locker SET state = ?, id_user = NULL, password = NULL WHERE id = ?';
@@ -178,6 +209,7 @@ function createWindow() {
           return;
         }
         mainWindow.webContents.send('success', null);
+        runScript(locker.id);
         console.log('Locker liberado:', locker.id);
       });
     } else {
@@ -190,7 +222,7 @@ function createWindow() {
 ipcMain.on('login',(event,datos)=>{
   console.log(datos)
   const sql = 'SELECT * FROM administrador WHERE correo = ? AND password = ?';
-  
+
   // Ejecutar la consulta SQL
   connection.query(sql, [datos.username, datos.password], (error, results, fields) => {
     if (error) {
@@ -208,7 +240,7 @@ ipcMain.on('login',(event,datos)=>{
 ipcMain.on('alta',(event,datos)=>{
   console.log(datos)
   const sql = 'INSERT INTO usuario(correo,departamento) values (?,?)';
-  
+
   // Ejecutar la consulta SQL
   connection.query(sql, [datos.username, datos.password], (error, results, fields) => {
     if (error) {
